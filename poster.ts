@@ -91,7 +91,17 @@ export function renderSystem(
 	}
 	if (termRows >= COMPACT_ROWS) lines.push(...piMark(theme).map((line) => center(line, width)))
 	lines.push("")
-	lines.push(base(`CPU ${cpuLabel}   load ${snap.load1.toFixed(2)} ${snap.load5.toFixed(2)} ${snap.load15.toFixed(2)}`))
+	// Load triple gets labels (1/5/15m), a trend arrow (1m vs 15m) and a
+	// per-core figure — the number that actually says loaded vs relaxed.
+	// Colour follows pressure: 1m load vs core count, same 70/90 thresholds.
+	const perCore = snap.cores > 0 ? snap.load1 / snap.cores : 0
+	const trend = snap.load1 > snap.load15 * 1.2 ? "↗" : snap.load1 < snap.load15 * 0.8 ? "↘" : "→"
+	const pressure = perCore >= 1 ? "error" : perCore >= 0.7 ? "warning" : "text"
+	const loadSeg = theme.fg(
+		pressure,
+		`load ${trend} 1m ${snap.load1.toFixed(2)} · 5m ${snap.load5.toFixed(2)} · 15m ${snap.load15.toFixed(2)} (${perCore.toFixed(2)}/core)`,
+	)
+	lines.push(base(`CPU ${cpuLabel}   `) + loadSeg)
 	lines.push(pctColor(theme, cpu)(bar(cpu, barW)) + muted(`  ${snap.cores} cores`))
 	lines.push(muted(snap.cpuModel.slice(0, width)))
 	lines.push("")
