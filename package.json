@@ -1,0 +1,47 @@
+{
+	"name": "pi-system",
+	"version": "0.1.0",
+	"description": "Live system overview for pi (/system): CPU, RAM and disk poster, refreshing every 1s or 3s.",
+	"type": "module",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/xprnvd/pi-system.git"
+	},
+	"keywords": [
+		"pi-package",
+		"pi",
+		"pi-coding-agent",
+		"system",
+		"monitor",
+		"dashboard"
+	],
+	"files": [
+		"index.ts",
+		"poster.ts",
+		"system.ts",
+		"types.ts",
+		"verify.mjs",
+		"README.md",
+		"LICENSE"
+	],
+	"pi": {
+		"extensions": [
+			"./index.ts"
+		]
+	},
+	"peerDependencies": {
+		"@earendil-works/pi-coding-agent": "*",
+		"@earendil-works/pi-tui": "*"
+	},
+	"devDependencies": {
+		"@earendil-works/pi-coding-agent": "1.3.0",
+		"@earendil-works/pi-tui": "1.3.0"
+	},
+	"scripts": {
+		"test": "node verify.mjs"
+	},
+	"engines": {
+		"node": ">=22.18"
+	}
+}
