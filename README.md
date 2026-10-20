@@ -22,8 +22,8 @@ pi install /srv/pi-system
 Later, from git (tracking `main`) or npm:
 
 ```bash
-pi install git:github.com/xprnvd/pi-system@v0.1.0
-pi install npm:pi-system@0.1.0
+pi install git:github.com/xprnvd/pi-system@v0.1.1
+pi install npm:pi-system@0.1.1
 ```
 
 ## Use
