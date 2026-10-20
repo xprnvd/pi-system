@@ -109,7 +109,15 @@ export function renderSystem(
 	lines.push(muted("TOP · CPU"))
 	for (let i = 0; i < 3; i++) {
 		const p = snap.procs[i]
-		lines.push(p ? `${p.pcpu.toFixed(1).padStart(5)}%  ${String(p.pid).padStart(7)}  ${p.cmd.slice(0, Math.max(8, width - 18))}` : "")
+		if (!p) {
+			lines.push("")
+			continue
+		}
+		// pi sets a bare argv, so the cwd (~/…) is what tells same-name procs apart.
+		const head = `${p.pcpu.toFixed(1).padStart(5)}%  ${String(p.pid).padStart(7)}  ${p.cmd}`
+		const room = Math.max(0, width - visibleWidth(head) - 2)
+		const tail = p.cwd ? muted(`  ${p.cwd.slice(0, room)}`) : ""
+		lines.push(head + tail)
 	}
 
 	if (loading) lines.push(center(muted("refreshing…"), width))

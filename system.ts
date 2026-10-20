@@ -10,8 +10,8 @@
 
 import { execFile } from "node:child_process"
 import { statfs } from "node:fs/promises"
-import { cpus, hostname, uptime } from "node:os"
-import { readFile } from "node:fs/promises"
+import { cpus, homedir, hostname, uptime } from "node:os"
+import { readFile, readlink } from "node:fs/promises"
 import type { SystemSnapshot, TopProc } from "./types.ts"
 import { emptySnapshot } from "./types.ts"
 
@@ -52,10 +52,21 @@ function memFromMeminfo(text: string | undefined): { total: number; avail: numbe
 
 function run(cmd: string, args: string[]): Promise<string> {
 	return new Promise((resolve) => {
-		execFile(cmd, args, { timeout: 4000, maxBuffer: 1 << 20 }, (err, stdout) => {
-			resolve(err ? "" : stdout)
+		execFile(cmd, args, { timeout: 4000, maxBuffer: 1 << 20 }, (err, stdout, stderr) => {
+			resolve(err ? "" : `${stdout}${stderr}`)
 		})
 	})
+}
+
+/** Best-effort cwd for a pid; pi sets a bare argv so cwd is the distinguisher. */
+async function pidCwd(pid: number): Promise<string> {
+	try {
+		const target = await readlink(`/proc/${pid}/cwd`)
+		const home = homedir()
+		return target === home ? "~" : target.startsWith(`${home}/`) ? `~${target.slice(home.length)}` : target
+	} catch {
+		return ""
+	}
 }
 
 async function topProcs(): Promise<TopProc[]> {
@@ -69,31 +80,43 @@ async function topProcs(): Promise<TopProc[]> {
 		const out = await run("procs", ["--sortd", "cpu", "--format", "json"])
 		try {
 			const rows = JSON.parse(out || "[]") as Array<Record<string, unknown>>
-			list = rows.slice(0, 5).map((r) => {
-			const cmd = String(r["Command"] ?? r["command"] ?? "?")
-			return {
-				pcpu: Number(r["CPU"] ?? r["cpu"] ?? 0),
-				pid: Number(r["PID"] ?? r["pid"] ?? 0),
-				comm: cmd.split(" ")[0] ?? "?",
-				cmd: cmd.slice(0, 48),
-			}
-		})
+			list = await Promise.all(
+				rows.slice(0, 5).map(async (r) => {
+				const cmd = String(r["Command"] ?? r["command"] ?? "?")
+				const pid = Number(r["PID"] ?? r["pid"] ?? 0)
+				return {
+					pcpu: Number(r["CPU"] ?? r["cpu"] ?? 0),
+					pid,
+					comm: cmd.split(" ")[0] ?? "?",
+					cmd: cmd.slice(0, 48),
+					cwd: pid > 0 ? await pidCwd(pid) : "",
+				}
+			}),
+			)
 		} catch {
 			list = []
 		}
 	}
 	if (list.length === 0) {
 		const out = await run("ps", ["-eo", "pcpu,pid,args", "--sort=-pcpu"])
-		list = out
+		const parsed = out
 			.split("\n")
 			.slice(1, 6)
 			.map((line) => {
 				const m = line.trim().match(/^([\d.]+)\s+(\d+)\s+(.+)$/)
 				if (!m) return undefined
-				const full = m[3]!
-				return { pcpu: Number(m[1]), pid: Number(m[2]), comm: full.split(" ")[0] ?? "?", cmd: full.slice(0, 48) }
+				return { pcpu: Number(m[1]), pid: Number(m[2]), full: m[3]! }
 			})
-			.filter((p): p is TopProc => !!p)
+			.filter((r): r is { pcpu: number; pid: number; full: string } => !!r)
+		list = await Promise.all(
+			parsed.map(async ({ pcpu, pid, full }) => ({
+				pcpu,
+				pid,
+				comm: full.split(" ")[0] ?? "?",
+				cmd: full.slice(0, 48),
+				cwd: await pidCwd(pid),
+			})),
+		)
 	}
 	lastProcs = { at: Date.now(), list }
 	return list
@@ -185,7 +208,7 @@ export function textSnapshot(s: SystemSnapshot): string {
 		`     ${s.cpuModel}`,
 		`MEM  ${s.memPct.toFixed(0)}%  ${formatBytes(s.memTotal - s.memAvail)}/${formatBytes(s.memTotal)} used  ${formatBytes(s.memAvail)} avail${s.swapTotal === 0 ? "  (no swap)" : ""}`,
 		`DISK ${s.diskPct.toFixed(0)}%  ${formatBytes(s.diskTotal - s.diskAvail)}/${formatBytes(s.diskTotal)} used  ${formatBytes(s.diskAvail)} avail  (/)`,
-		`TOP  ${s.procs.map((p) => `${p.pcpu.toFixed(1)}% ${p.pid} ${p.cmd}`).join("  ·  ") || "…"}`,
+		`TOP  ${s.procs.map((p) => `${p.pcpu.toFixed(1)}% ${p.pid} ${p.cmd}${p.cwd ? ` [${p.cwd}]` : ""}`).join("  ·  ") || "…"}`,
 	]
 	return lines.join("\n")
 }

@@ -18,6 +18,7 @@ assert.ok(live.memTotal > 0, "memTotal > 0")
 assert.ok(live.diskTotal > 0, "diskTotal > 0")
 assert.ok(Number.isFinite(live.cpuPct), "cpuPct filled after prime")
 assert.ok(live.procs.length > 0, "top procs non-empty")
+assert.ok(live.procs.some((p) => p.cwd), "proc cwd resolved")
 console.log(
 	`live: cpu ${live.cpuPct.toFixed(0)}% mem ${(live.memPct).toFixed(0)}% disk ${live.diskPct.toFixed(0)}% procs=${live.procs.length}`,
 )

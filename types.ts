@@ -6,6 +6,8 @@ export interface TopProc {
 	comm: string
 	/** Truncated command line (comm + leading args), for telling apart same-name procs. */
 	cmd: string
+	/** Working directory with $HOME shortened to ~; empty when unreadable. */
+	cwd: string
 }
 
 export interface SystemSnapshot {
