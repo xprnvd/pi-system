@@ -32,7 +32,7 @@ export default function systemExtension(pi: ExtensionAPI): void {
 				let snap: SystemSnapshot = emptySnapshot()
 				let loading = true
 				let closed = false
-				let cached: { width: number; interval: number; loading: boolean; at: number; lines: string[] } | undefined
+				let cached: { width: number; rows: number; interval: number; loading: boolean; at: number; lines: string[] } | undefined
 				const controller = new AbortController()
 
 				const refresh = (): void => {
@@ -64,13 +64,14 @@ export default function systemExtension(pi: ExtensionAPI): void {
 				controller.signal.addEventListener("abort", () => clearInterval(timerHolder.current))
 
 				const render = (width: number): string[] => {
+					const rows = tui.terminal.rows
 					const key = `${snap.at}`
-					if (cached?.width === width && cached.interval === intervalMs && cached.loading === loading && cached.at === key) {
+					if (cached?.width === width && cached.rows === rows && cached.interval === intervalMs && cached.loading === loading && cached.at === key) {
 						return cached.lines
 					}
 					const intervalSecs = intervalMs / 1000
-					const lines = renderSystem(snap, theme, width, intervalSecs, loading)
-					cached = { width, interval: intervalMs, loading, at: key, lines }
+					const lines = renderSystem(snap, theme, width, rows, intervalSecs, loading)
+					cached = { width, rows, interval: intervalMs, loading, at: key, lines }
 					return lines
 				}
 

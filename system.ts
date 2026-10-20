@@ -69,23 +69,29 @@ async function topProcs(): Promise<TopProc[]> {
 		const out = await run("procs", ["--sortd", "cpu", "--format", "json"])
 		try {
 			const rows = JSON.parse(out || "[]") as Array<Record<string, unknown>>
-			list = rows.slice(0, 5).map((r) => ({
+			list = rows.slice(0, 5).map((r) => {
+			const cmd = String(r["Command"] ?? r["command"] ?? "?")
+			return {
 				pcpu: Number(r["CPU"] ?? r["cpu"] ?? 0),
 				pid: Number(r["PID"] ?? r["pid"] ?? 0),
-				comm: String(r["Command"] ?? r["command"] ?? "?").split(" ").slice(0, 2).join(" "),
-			}))
+				comm: cmd.split(" ")[0] ?? "?",
+				cmd: cmd.slice(0, 48),
+			}
+		})
 		} catch {
 			list = []
 		}
 	}
 	if (list.length === 0) {
-		const out = await run("ps", ["-eo", "pcpu,pid,comm", "--sort=-pcpu"])
+		const out = await run("ps", ["-eo", "pcpu,pid,args", "--sort=-pcpu"])
 		list = out
 			.split("\n")
 			.slice(1, 6)
 			.map((line) => {
 				const m = line.trim().match(/^([\d.]+)\s+(\d+)\s+(.+)$/)
-				return m ? { pcpu: Number(m[1]), pid: Number(m[2]), comm: m[3]!.slice(0, 28) } : undefined
+				if (!m) return undefined
+				const full = m[3]!
+				return { pcpu: Number(m[1]), pid: Number(m[2]), comm: full.split(" ")[0] ?? "?", cmd: full.slice(0, 48) }
 			})
 			.filter((p): p is TopProc => !!p)
 	}
@@ -179,7 +185,7 @@ export function textSnapshot(s: SystemSnapshot): string {
 		`     ${s.cpuModel}`,
 		`MEM  ${s.memPct.toFixed(0)}%  ${formatBytes(s.memTotal - s.memAvail)}/${formatBytes(s.memTotal)} used  ${formatBytes(s.memAvail)} avail${s.swapTotal === 0 ? "  (no swap)" : ""}`,
 		`DISK ${s.diskPct.toFixed(0)}%  ${formatBytes(s.diskTotal - s.diskAvail)}/${formatBytes(s.diskTotal)} used  ${formatBytes(s.diskAvail)} avail  (/)`,
-		`TOP  ${s.procs.map((p) => `${p.pcpu.toFixed(1)}% ${p.comm}`).join("  ·  ") || "…"}`,
+		`TOP  ${s.procs.map((p) => `${p.pcpu.toFixed(1)}% ${p.pid} ${p.cmd}`).join("  ·  ") || "…"}`,
 	]
 	return lines.join("\n")
 }

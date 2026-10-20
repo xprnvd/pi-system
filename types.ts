@@ -4,6 +4,8 @@ export interface TopProc {
 	pcpu: number
 	pid: number
 	comm: string
+	/** Truncated command line (comm + leading args), for telling apart same-name procs. */
+	cmd: string
 }
 
 export interface SystemSnapshot {

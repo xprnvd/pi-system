@@ -34,19 +34,29 @@ const stubTheme = {
 	getColorMode: () => "dark",
 	style: (s) => s,
 }
+const stripAnsi = (s) => s.replace(/\x1b\[[0-9;]*m/g, "")
 for (const termWidth of [40, 80, 120]) {
-	const lines = poster.renderSystem(live, stubTheme, termWidth, 1, false)
-	assert.equal(lines.length, poster.PANEL_ROWS + 1, `rows at ${termWidth}`)
-	for (const line of lines) {
-		assert.ok(
-			[...line].length <= termWidth + 16,
-			`line fits at ${termWidth}: ${JSON.stringify(line.slice(0, 60))}`,
-		)
+	for (const termRows of [24, 50]) {
+		const lines = poster.renderSystem(live, stubTheme, termWidth, termRows, 1, false)
+		assert.equal(lines.length, poster.PANEL_ROWS + 1, `rows at ${termWidth}x${termRows}`)
+		for (const line of lines) {
+			assert.ok(
+				[...stripAnsi(line)].length <= termWidth,
+				`line fits at ${termWidth}: ${JSON.stringify(stripAnsi(line).slice(0, 60))}`,
+			)
+		}
 	}
 }
+// Tall terminals show the pi mark, short ones skip it — same height either way.
+const tall = poster.renderSystem(live, stubTheme, 80, 50, 1, false)
+const short = poster.renderSystem(live, stubTheme, 80, 24, 1, false)
+assert.ok(tall.some((l) => l.includes("▀") || l.includes("Pi")), "mark on tall terminals")
+assert.ok(!short.some((l) => l.includes("▀")), "no mark on short terminals")
 // Loading state keeps the same height.
-const loading = poster.renderSystem(types.emptySnapshot(), stubTheme, 80, 3, true)
+const loading = poster.renderSystem(types.emptySnapshot(), stubTheme, 80, 50, 3, true)
 assert.equal(loading.length, poster.PANEL_ROWS + 1, "loading rows match")
+// TOP rows carry pid + command, so same-name procs are distinguishable.
+assert.ok(tall.some((l) => /\d+%\s+\d+\s+\S/.test(l)), "top rows have pid + cmd")
 
 // 4. Helpers.
 assert.equal(system.formatBytes(0), "0.0B")

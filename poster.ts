@@ -5,13 +5,34 @@
  * or the editor jumps and mouse selections break.
  */
 
-import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui"
+import { backgroundAnsi, foregroundAnsi, isAppleTerminalSession, rgbColor, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui"
 import type { Theme } from "@earendil-works/pi-coding-agent"
 import type { SystemSnapshot } from "./types.ts"
 import { formatBytes, formatUptime } from "./system.ts"
 
 /** Fixed panel height, excluding the one top spacer. */
-export const PANEL_ROWS = 17
+export const PANEL_ROWS = 19
+
+/** Compact below the same row count as pi-stats-poster (hides the mark). */
+export const COMPACT_ROWS = 38
+
+// pi's brand mark, reproduced from pi-stats-poster (itself reproduced from
+// pi's internal `pi-logo` module). Fixed brand colours, not theme-derived;
+// Apple Terminal gets the wordmark fallback, same guard as upstream.
+const CORAL = rgbColor(228, 138, 122)
+const BLUE = rgbColor(79, 142, 179)
+const YELLOW = rgbColor(234, 182, 93)
+
+function piMark(theme: Theme): string[] {
+	const mode = theme.getColorMode()
+	if (isAppleTerminalSession()) {
+		return [`${foregroundAnsi(CORAL, mode)}P\x1b[0m${foregroundAnsi(YELLOW, mode)}i\x1b[0m`]
+	}
+	return [
+		`${foregroundAnsi(CORAL, mode)}${backgroundAnsi(BLUE, mode)}▀\x1b[0m${foregroundAnsi(CORAL, mode)}▀█\x1b[0m `,
+		`${foregroundAnsi(BLUE, mode)}█▀\x1b[0m ${foregroundAnsi(YELLOW, mode)}█\x1b[0m`,
+	]
+}
 
 function center(text: string, width: number): string {
 	const pad = Math.max(0, Math.floor((width - visibleWidth(text)) / 2))
@@ -42,6 +63,7 @@ export function renderSystem(
 	snap: SystemSnapshot,
 	theme: Theme,
 	termWidth: number,
+	termRows: number,
 	intervalSecs: number,
 	loading: boolean,
 ): string[] {
@@ -55,18 +77,19 @@ export function renderSystem(
 	const lines: string[] = []
 	// Header: pi-stats-poster uses justifyContent="space-between" — title flush
 	// left, range flush right, stacking below 44 columns. Same here: title left,
-	// uptime right. Deliberate deviations from the poster: no pi mark (2 rows on
-	// every 1s tick is spendy) and a fixed top pad instead of vertical centring
-	// (centring would bounce the panel as the terminal resizes mid-refresh).
+	// uptime right. The pi mark sits under the header when the terminal is tall
+	// enough, exactly like the poster; short terminals skip it (compact).
+	// No key-hint line: like /stats, Esc/Ctrl+C/q just work. The only chrome
+	// beyond the data is the interval, kept in the header's right span.
 	const title = theme.bold(theme.fg("text", `${snap.hostname} / system`))
-	const span = muted(`up ${formatUptime(snap.uptimeSecs)}`)
+	const span = muted(`up ${formatUptime(snap.uptimeSecs)} · ${intervalSecs}s`)
 	if (width < 44) {
 		lines.push(padRight(title, width), padRight(span, width))
 	} else {
 		const gap = Math.max(1, width - visibleWidth(title) - visibleWidth(span))
 		lines.push(center(`${title}${" ".repeat(gap)}${span}`, width))
 	}
-	lines.push(center(muted(`refresh ${intervalSecs}s · 1/3 rate · r now · q quit`), width))
+	if (termRows >= COMPACT_ROWS) lines.push(...piMark(theme).map((line) => center(line, width)))
 	lines.push("")
 	lines.push(base(`CPU ${cpuLabel}   load ${snap.load1.toFixed(2)} ${snap.load5.toFixed(2)} ${snap.load15.toFixed(2)}`))
 	lines.push(pctColor(theme, cpu)(bar(cpu, barW)) + muted(`  ${snap.cores} cores`))
@@ -83,10 +106,10 @@ export function renderSystem(
 	lines.push(base(`DISK ${snap.diskPct.toFixed(0)}%  ${formatBytes(diskUsed)}/${formatBytes(snap.diskTotal)}  (/)`))
 	lines.push(pctColor(theme, snap.diskPct)(bar(snap.diskPct, barW)) + muted(`  ${formatBytes(snap.diskAvail)} avail`))
 	lines.push("")
-	lines.push(muted("TOP"))
+	lines.push(muted("TOP · CPU"))
 	for (let i = 0; i < 3; i++) {
 		const p = snap.procs[i]
-		lines.push(p ? `${p.pcpu.toFixed(1).padStart(5)}%  ${p.comm.slice(0, width - 10)}` : "")
+		lines.push(p ? `${p.pcpu.toFixed(1).padStart(5)}%  ${String(p.pid).padStart(7)}  ${p.cmd.slice(0, Math.max(8, width - 18))}` : "")
 	}
 
 	if (loading) lines.push(center(muted("refreshing…"), width))
