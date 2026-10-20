@@ -35,7 +35,7 @@ function pctColor(theme: Theme, pct: number): (s: string) => string {
 }
 
 export function posterWidth(termWidth: number): number {
-	return Math.max(24, Math.min(96, termWidth - 8))
+	return Math.max(12, Math.min(110, termWidth - 8))
 }
 
 export function renderSystem(
@@ -53,8 +53,20 @@ export function renderSystem(
 
 	const barW = Math.max(10, width - 22)
 	const lines: string[] = []
-	lines.push(center(theme.bold(theme.fg("text", `${snap.hostname} / system`)), width))
-	lines.push(center(muted(`up ${formatUptime(snap.uptimeSecs)} · refresh ${intervalSecs}s · 1/3 rate · r now · q quit`), width))
+	// Header: pi-stats-poster uses justifyContent="space-between" — title flush
+	// left, range flush right, stacking below 44 columns. Same here: title left,
+	// uptime right. Deliberate deviations from the poster: no pi mark (2 rows on
+	// every 1s tick is spendy) and a fixed top pad instead of vertical centring
+	// (centring would bounce the panel as the terminal resizes mid-refresh).
+	const title = theme.bold(theme.fg("text", `${snap.hostname} / system`))
+	const span = muted(`up ${formatUptime(snap.uptimeSecs)}`)
+	if (width < 44) {
+		lines.push(padRight(title, width), padRight(span, width))
+	} else {
+		const gap = Math.max(1, width - visibleWidth(title) - visibleWidth(span))
+		lines.push(center(`${title}${" ".repeat(gap)}${span}`, width))
+	}
+	lines.push(center(muted(`refresh ${intervalSecs}s · 1/3 rate · r now · q quit`), width))
 	lines.push("")
 	lines.push(base(`CPU ${cpuLabel}   load ${snap.load1.toFixed(2)} ${snap.load5.toFixed(2)} ${snap.load15.toFixed(2)}`))
 	lines.push(pctColor(theme, cpu)(bar(cpu, barW)) + muted(`  ${snap.cores} cores`))
