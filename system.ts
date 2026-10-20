@@ -211,7 +211,7 @@ export function formatUptime(secs: number): string {
 export function textSnapshot(s: SystemSnapshot): string {
 	const cpu = Number.isFinite(s.cpuPct) ? `${s.cpuPct.toFixed(0)}%` : "…"
 	const lines = [
-		`${s.hostname}  up ${formatUptime(s.uptimeSecs)}`,
+		`${s.hostname}  uptime ${formatUptime(s.uptimeSecs)}`,
 		`CPU  ${cpu}  load 1m ${s.load1.toFixed(2)} 5m ${s.load5.toFixed(2)} 15m ${s.load15.toFixed(2)} (${s.cores > 0 ? (s.load1 / s.cores).toFixed(2) : "?"}/core, ${s.cores} cores)`,
 		`     ${s.cpuModel}`,
 		`MEM  ${s.memPct.toFixed(0)}%  ${formatBytes(s.memTotal - s.memAvail)}/${formatBytes(s.memTotal)} used  ${formatBytes(s.memAvail)} avail${s.swapTotal === 0 ? "  (no swap)" : ""}`,

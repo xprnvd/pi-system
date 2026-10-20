@@ -82,7 +82,7 @@ export function renderSystem(
 	// No key-hint line: like /stats, Esc/Ctrl+C/q just work. The only chrome
 	// beyond the data is the interval, kept in the header's right span.
 	const title = theme.bold(theme.fg("text", `${snap.hostname} / system`))
-	const span = muted(`up ${formatUptime(snap.uptimeSecs)} · refresh ${intervalSecs}s`)
+	const span = muted(`uptime ${formatUptime(snap.uptimeSecs)} · refresh ${intervalSecs}s`)
 	if (width < 44) {
 		lines.push(padRight(title, width), padRight(span, width))
 	} else {
