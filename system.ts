@@ -58,6 +58,14 @@ function run(cmd: string, args: string[]): Promise<string> {
 	})
 }
 
+/** Strip the directory off argv[0] (`/usr/bin/node --import …` → `node --import …`) so the meaningful args survive truncation. */
+function shortCmd(full: string): string {
+	const m = full.match(/^(\S+)(.*)$/)
+	if (!m) return full.slice(0, 48)
+	const base = m[1]!.split("/").pop() ?? m[1]!
+	return `${base}${m[2]}`.slice(0, 48)
+}
+
 /** Best-effort cwd for a pid; pi sets a bare argv so cwd is the distinguisher. */
 async function pidCwd(pid: number): Promise<string> {
 	try {
@@ -88,7 +96,7 @@ async function topProcs(): Promise<TopProc[]> {
 					pcpu: Number(r["CPU"] ?? r["cpu"] ?? 0),
 					pid,
 					comm: cmd.split(" ")[0] ?? "?",
-					cmd: cmd.slice(0, 48),
+					cmd: shortCmd(cmd),
 					cwd: pid > 0 ? await pidCwd(pid) : "",
 				}
 			}),
@@ -113,7 +121,7 @@ async function topProcs(): Promise<TopProc[]> {
 				pcpu,
 				pid,
 				comm: full.split(" ")[0] ?? "?",
-				cmd: full.slice(0, 48),
+				cmd: shortCmd(full),
 				cwd: await pidCwd(pid),
 			})),
 		)
