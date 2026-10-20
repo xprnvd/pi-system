@@ -5,6 +5,8 @@ disk as a poster that refreshes every 1s or 3s. Run `/system` in interactive
 mode; `1` / `3` switches the rate, `r` refreshes now, `Escape`, `Ctrl+C` (or
 `q`) closes it.
 
+[![the /system poster](docs/system.png)](https://www.npmjs.com/package/pi-system)
+
 Minimal snapshot scope, tuned for a small VPS: load averages, per-resource
 bars with 70/90% warn/crit colouring, top-3 CPU processes, uptime, and a
 no-swap warning when the machine has none.

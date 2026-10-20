@@ -22,13 +22,15 @@
 		"system.ts",
 		"types.ts",
 		"verify.mjs",
+		"docs",
 		"README.md",
 		"LICENSE"
 	],
 	"pi": {
 		"extensions": [
 			"./index.ts"
-		]
+		],
+		"image": "./docs/system.png"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",
