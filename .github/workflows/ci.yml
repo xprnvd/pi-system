@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+
+  publish:
+    # Publish to npm when a version tag is pushed.
+    #
+    # Authentication is npm's trusted publishing: the npm CLI exchanges this
+    # workflow's OIDC identity for a short-lived publish token. There is no
+    # npm token in this repository, and nothing long-lived to leak or rotate.
+    if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'xprnvd/pi-system'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required for the OIDC exchange.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - run: npm ci --no-audit --no-fund
+      - name: Check the tag matches the package version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$version" ]; then
+            echo "tag $tag does not match package version $version" >&2
+            exit 1
+          fi
+      - run: npm test
+      # prepublishOnly runs the suite again as the publish gate.
+      # To switch to npm's staged flow (publish -> your 2FA approval), use
+      # `npm stage publish` here and allow only "npm stage publish" on the
+      # package's trusted publisher configuration.
+      # Trusted publishing generates the provenance attestation on its own;
+      # --provenance keeps it explicit, so a broken attestation fails the
+      # publish instead of shipping a package without one.
+      - run: npm publish --provenance --access public

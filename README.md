@@ -17,10 +17,11 @@ From a local checkout (this repo is the source of truth at `/srv/pi-system`):
 pi install /srv/pi-system
 ```
 
-Later, from git or npm once published:
+Later, from git (tracking `main`) or npm:
 
 ```bash
-pi install git:github.com/xprnvd/pi-system
+pi install git:github.com/xprnvd/pi-system@v0.1.0
+pi install npm:pi-system@0.1.0
 ```
 
 ## Use
