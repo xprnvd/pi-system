@@ -1,6 +1,6 @@
 {
 	"name": "pi-system",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "Live system overview for pi (/system): CPU, RAM and disk poster, refreshing every 1s or 3s.",
 	"type": "module",
 	"license": "MIT",
