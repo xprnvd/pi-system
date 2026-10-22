@@ -13,10 +13,10 @@ no-swap warning when the machine has none.
 
 ## Install
 
-From a local checkout (this repo is the source of truth at `/srv/pi-system`):
+From a local checkout of this repository:
 
 ```bash
-pi install /srv/pi-system
+pi install .
 ```
 
 Later, from git (tracking `main`) or npm:
